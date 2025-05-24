@@ -1,0 +1,51 @@
+[project]
+name = "alphaforge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "baostock>=0.8.9",
+    "colorlog",
+    "fire>=0.7.0",
+    "gym>=0.26.2",
+    "joblib>=1.5.0",
+    "loguru>=0.7.3",
+    "matplotlib>=3.10.3",
+    "mlflow>=2.22.0",
+    "numpy>=2.2.5",
+    "openai>=1.79.0",
+    "pandas>=2.2.3",
+    "pandera>=0.24.0",
+    "protobuf==3.20.3",
+    "pyqlib>=0.9.6",
+    "pytest>=8.3.5",
+    "requests>=2.32.3",
+    "sb3-contrib>=2.6.0",
+    "scikit-learn>=1.6.1",
+    "scipy>=1.15.3",
+    "shimmy>=2.0.0",
+    "stable-baselines3>=2.6.0",
+    "tensorboard>=2.19.0",
+    "torch",
+    "torchaudio>=2.7.0",
+    "torchvision",
+    "tqdm>=4.67.1",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name="pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name="tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"

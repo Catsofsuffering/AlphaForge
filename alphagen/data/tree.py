@@ -45,7 +45,7 @@ class ExpressionBuilder:
         elif isinstance(token, FeatureToken):
             return self.validate_feature()
         else:
-            assert False,token
+            assert False, token
 
     def validate_op(self, op: Type[Operator]) -> bool:
         if len(self.stack) < op.n_args():
@@ -57,8 +57,7 @@ class ExpressionBuilder:
         elif issubclass(op, BinaryOperator):
             if not self.stack[-1].is_featured and not self.stack[-2].is_featured:
                 return False
-            if (isinstance(self.stack[-1], DeltaTime) or
-                    isinstance(self.stack[-2], DeltaTime)):
+            if isinstance(self.stack[-1], DeltaTime) or isinstance(self.stack[-2], DeltaTime):
                 return False
         elif issubclass(op, RollingOperator):
             if not isinstance(self.stack[-1], DeltaTime):
@@ -88,7 +87,7 @@ class InvalidExpressionException(ValueError):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tokens = [
         FeatureToken(FeatureType.LOW),
         OperatorToken(Abs),
@@ -104,5 +103,5 @@ if __name__ == '__main__':
     for token in tokens:
         builder.add_token(token)
 
-    print(f'res: {str(builder.get_tree())}')
-    print(f'ref: Add(Ref(Abs($low),-10),Div($high,$close))')
+    print(f"res: {str(builder.get_tree())}")
+    print(f"ref: Add(Ref(Abs($low),-10),Div($high,$close))")

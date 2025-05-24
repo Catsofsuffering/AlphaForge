@@ -13,8 +13,8 @@ import fire
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from loguru import logger
 from qlib.utils import fname_to_code, code_to_fname
+from alphalogger import AlphaLogger
 
 
 class DumpDataBase:
@@ -46,6 +46,7 @@ class DumpDataBase:
         include_fields: str = "",
         limit_nums: Optional[int] = None,
     ):
+        self.logger = AlphaLogger()
         """
 
         Parameters
@@ -108,12 +109,12 @@ class DumpDataBase:
     def _backup_qlib_dir(self, target_dir: Path):
         shutil.copytree(str(self.qlib_dir.resolve()), str(target_dir.resolve()))
 
-    def _format_datetime(self, datetime_d: [str, pd.Timestamp]):
+    def _format_datetime(self, datetime_d: str | pd.Timestamp):
         datetime_d = pd.Timestamp(datetime_d)
         return datetime_d.strftime(self.calendar_format)
 
     def _get_date(
-        self, file_or_df: [Path, pd.DataFrame], *, is_begin_end: bool = False, as_set: bool = False
+        self, file_or_df: Path | pd.DataFrame, *, is_begin_end: bool = False, as_set: bool = False
     ) -> Iterable[pd.Timestamp]:
         if not isinstance(file_or_df, pd.DataFrame):
             df = self._get_source_data(file_or_df)
@@ -135,7 +136,7 @@ class DumpDataBase:
 
     def _get_source_data(self, file_path: Path) -> pd.DataFrame:
         df = pd.read_csv(str(file_path.resolve()), low_memory=False)
-        df[self.date_field_name] = df[self.date_field_name].astype(str).astype(np.datetime64)
+        df[self.date_field_name] = df[self.date_field_name].astype(str).astype('datetime64[ns]')
         # df.drop_duplicates([self.date_field_name], inplace=True)
         return df
 
@@ -195,7 +196,7 @@ class DumpDataBase:
     def data_merge_calendar(self, df: pd.DataFrame, calendars_list: List[pd.Timestamp]) -> pd.DataFrame:
         # calendars
         calendars_df = pd.DataFrame(data=calendars_list, columns=[self.date_field_name])
-        calendars_df[self.date_field_name] = calendars_df[self.date_field_name].astype(np.datetime64)
+        calendars_df[self.date_field_name] = calendars_df[self.date_field_name].astype('datetime64[ns]')
         cal_df = calendars_df[
             (calendars_df[self.date_field_name] >= df[self.date_field_name].min())
             & (calendars_df[self.date_field_name] <= df[self.date_field_name].max())
@@ -212,10 +213,10 @@ class DumpDataBase:
 
     def _data_to_bin(self, df: pd.DataFrame, calendar_list: List[pd.Timestamp], features_dir: Path):
         if df.empty:
-            logger.warning(f"{features_dir.name} data is None or empty")
+            self.logger.warning(f"{features_dir.name} data is None or empty")
             return
         if not calendar_list:
-            logger.warning("calendar_list is empty")
+            self.logger.warning("calendar_list is empty")
             return
         # align index
         _df = self.data_merge_calendar(df, calendar_list)
@@ -233,9 +234,9 @@ class DumpDataBase:
                 # append; self._mode == self.ALL_MODE or not bin_path.exists()
                 np.hstack([date_index, _df[field]]).astype("<f").tofile(str(bin_path.resolve()))
 
-    def _dump_bin(self, file_or_data: [Path, pd.DataFrame], calendar_list: List[pd.Timestamp]):
+    def _dump_bin(self, file_or_data: Path | pd.DataFrame, calendar_list: List[pd.Timestamp]):
         if not calendar_list:
-            logger.warning("calendar_list is empty")
+            self.logger.warning("calendar_list is empty")
             return
         if isinstance(file_or_data, pd.DataFrame):
             if file_or_data.empty:
@@ -248,7 +249,7 @@ class DumpDataBase:
         else:
             raise ValueError(f"not support {type(file_or_data)}")
         if df is None or df.empty:
-            logger.warning(f"{code} data is None or empty")
+            self.logger.warning(f"{code} data is None or empty")
             return
 
         # try to remove dup rows or it will cause exception when reindex.
@@ -269,7 +270,7 @@ class DumpDataBase:
 
 class DumpDataAll(DumpDataBase):
     def _get_all_date(self):
-        logger.info("start get all date......")
+        self.logger.info("start get all date......")
         all_datetime = set()
         date_range_list = []
         _fun = partial(self._get_date, as_set=True, is_begin_end=True)
@@ -288,28 +289,28 @@ class DumpDataAll(DumpDataBase):
                     p_bar.update()
         self._kwargs["all_datetime_set"] = all_datetime
         self._kwargs["date_range_list"] = date_range_list
-        logger.info("end of get all date.\n")
+        self.logger.info("end of get all date.")
 
     def _dump_calendars(self):
-        logger.info("start dump calendars......")
+        self.logger.info("start dump calendars......")
         self._calendars_list = sorted(map(pd.Timestamp, self._kwargs["all_datetime_set"]))
         self.save_calendars(self._calendars_list)
-        logger.info("end of calendars dump.\n")
+        self.logger.info("end of calendars dump.")
 
     def _dump_instruments(self):
-        logger.info("start dump instruments......")
+        self.logger.info("start dump instruments......")
         self.save_instruments(self._kwargs["date_range_list"])
-        logger.info("end of instruments dump.\n")
+        self.logger.info("end of instruments dump.")
 
     def _dump_features(self):
-        logger.info("start dump features......")
+        self.logger.info("start dump features......")
         _dump_func = partial(self._dump_bin, calendar_list=self._calendars_list)
         with tqdm(total=len(self.csv_files)) as p_bar:
             with ProcessPoolExecutor(max_workers=self.works) as executor:
                 for _ in executor.map(_dump_func, self.csv_files):
                     p_bar.update()
 
-        logger.info("end of features dump.\n")
+        self.logger.info("end of features dump.\n")
 
     def dump(self):
         self._get_all_date()
@@ -320,7 +321,7 @@ class DumpDataAll(DumpDataBase):
 
 class DumpDataFix(DumpDataAll):
     def _dump_instruments(self):
-        logger.info("start dump instruments......")
+        self.logger.info("start dump instruments......")
         _fun = partial(self._get_date, is_begin_end=True)
         new_stock_files = sorted(
             filter(
@@ -341,7 +342,7 @@ class DumpDataFix(DumpDataAll):
         _inst_df = pd.DataFrame.from_dict(self._old_instruments, orient="index")
         _inst_df.index.names = [self.symbol_field_name]
         self.save_instruments(_inst_df.reset_index())
-        logger.info("end of instruments dump.\n")
+        self.logger.info("end of instruments dump.\n")
 
     def dump(self):
         self._calendars_list = self._read_calendars(self._calendars_dir.joinpath(f"{self.freq}.txt"))
@@ -427,7 +428,7 @@ class DumpDataUpdate(DumpDataBase):
 
     def _load_all_source_data(self):
         # NOTE: Need more memory
-        logger.info("start load all source data....")
+        self.logger.info("start load all source data....")
         all_df = []
 
         def _read_csv(file_path: Path):
@@ -443,7 +444,7 @@ class DumpDataUpdate(DumpDataBase):
                         all_df.append(df)
                     p_bar.update()
 
-        logger.info("end of load all data.\n")
+        self.logger.info("end of load all data.")
         return pd.concat(all_df, sort=False)
 
     def _dump_calendars(self):
@@ -453,7 +454,7 @@ class DumpDataUpdate(DumpDataBase):
         pass
 
     def _dump_features(self):
-        logger.info("start dump features......")
+        self.logger.info("start dump features......")
         error_code = {}
         with ProcessPoolExecutor(max_workers=self.works) as executor:
             futures = {}
@@ -488,9 +489,9 @@ class DumpDataUpdate(DumpDataBase):
                     except Exception:
                         error_code[futures[_future]] = traceback.format_exc()
                     p_bar.update()
-            logger.info(f"dump bin errors： {error_code}")
+            self.logger.info(f"dump bin errors： {error_code}")
 
-        logger.info("end of features dump.\n")
+        self.logger.info("end of features dump.")
 
     def dump(self):
         self.save_calendars(self._new_calendar_list)

@@ -181,7 +181,7 @@ class DeepSymbolicOptimizer():
         """
 
         seed = self.config_experiment.get("seed")
-        print('############# seed is ############',seed)
+
         # Default uses current time in milliseconds, modulo 1e9
         if seed is None:
             seed = round(time() * 1000) % int(1e9)

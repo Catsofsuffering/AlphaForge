@@ -36,3 +36,6 @@ ppo2/
 240719_infer_data_norank.ipynb
 combine_AFF_GRF.py
 combine_GRF.ipynb
+data/
+logs/
+runlog/

@@ -9,7 +9,7 @@ def get_data_by_year(
     instruments=None, target=None,freq=None,
                     ):
     QLIB_PATH = {
-        'day':'path/for/qlib',
+        'day':'./data/qlib_data/cn_data_rolling',
     }
     
     from gan.utils import load_pickle,save_pickle

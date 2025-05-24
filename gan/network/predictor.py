@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 class NetP(nn.Module):
     def __init__(
         self,
-        n_chars ,
+        n_chars,
         hidden,
         seq_len,
     ):
@@ -47,30 +47,30 @@ class NetP(nn.Module):
             return x, latent_tensor
         else:
             return x
-        
+
     def initialize_parameters(self):
         for name, param in self.named_parameters():
-            if 'weight' in name and len(param.shape)>1  :
+            if "weight" in name and len(param.shape) > 1:
                 nn.init.xavier_normal_(param)
-            elif 'bias' in name:
+            elif "bias" in name:
                 nn.init.constant_(param, 0.0)
+
 
 class ResBlock(nn.Module):
     def __init__(self, hidden):
         super(ResBlock, self).__init__()
         self.res_block = nn.Sequential(
             nn.ReLU(True),
-            nn.Conv1d(hidden, hidden, 5, padding=2),#nn.Linear(DIM, DIM),
+            nn.Conv1d(hidden, hidden, 5, padding=2),  # nn.Linear(DIM, DIM),
             nn.ReLU(True),
-            nn.Conv1d(hidden, hidden, 5, padding=2),#nn.Linear(DIM, DIM),
+            nn.Conv1d(hidden, hidden, 5, padding=2),  # nn.Linear(DIM, DIM),
         )
 
     def forward(self, input):
         output = self.res_block(input)
-        return input + (0.3*output)
-    
+        return input + (0.3 * output)
 
-    
+
 class NetP_CNN(nn.Module):
     def __init__(self, n_chars, seq_len, hidden):
         super().__init__()
@@ -85,26 +85,25 @@ class NetP_CNN(nn.Module):
             # ResBlock(hidden),
         )
         self.conv1d = nn.Conv1d(n_chars, hidden, 1)
-        self.linear = nn.Linear(seq_len*hidden, 1)
+        self.linear = nn.Linear(seq_len * hidden, 1)
 
-    def forward(self, input,latent=False):
-        output = input.transpose(1, 2) # (BATCH_SIZE, len(charmap), SEQ_LEN)
+    def forward(self, input, latent=False):
+        output = input.transpose(1, 2)  # (BATCH_SIZE, len(charmap), SEQ_LEN)
         output = self.conv1d(output)
         output = self.block(output)
-        output = output.view(-1, self.seq_len*self.hidden)
+        output = output.view(-1, self.seq_len * self.hidden)
         latent_tensor = output
         output = self.linear(latent_tensor)
         if latent:
             return output, latent_tensor
         else:
             return output
-        
 
     def initialize_parameters(self):
         for name, param in self.named_parameters():
-            if 'weight' in name and len(param.shape)>1  :
+            if "weight" in name and len(param.shape) > 1:
                 nn.init.xavier_normal_(param)
-            elif 'bias' in name:
+            elif "bias" in name:
                 nn.init.constant_(param, 0.0)
 
 
@@ -158,9 +157,7 @@ def train_regression_model(
 
             average_valid_loss = total_valid_loss / total_samples_valid
 
-            print(
-                f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {average_train_loss:.4f}, Validation Loss: {average_valid_loss:.4f}"
-            )
+            print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {average_train_loss:.4f}, Validation Loss: {average_valid_loss:.4f}")
 
             # Write to TensorBoard if requested
             if use_tensorboard:
@@ -168,10 +165,7 @@ def train_regression_model(
                 writer.add_scalar("Validation Loss", average_valid_loss, epoch)
 
             # Early Stopping
-            if (
-                early_stopping_patience is not None
-                and average_valid_loss < best_valid_loss
-            ):
+            if early_stopping_patience is not None and average_valid_loss < best_valid_loss:
                 best_valid_loss = average_valid_loss
                 patience_counter = 0
                 best_weights = copy.deepcopy(net.state_dict())  # Record the best weights
@@ -191,14 +185,13 @@ def train_regression_model(
         writer.close()
 
 
-
 def train_regression_model_with_weight(
     train_loader,
     valid_loader,
     net,
     loss_fn,
     optimizer,
-    device = 'cpu',
+    device="cpu",
     num_epochs=10,
     use_tensorboard=True,
     tensorboard_path="logs",
@@ -251,9 +244,7 @@ def train_regression_model_with_weight(
 
             average_valid_loss = total_valid_loss / total_samples_valid
 
-            print(
-                f"Epoch [{epoch + 1}/{num_epochs}], Train Loss: {average_train_loss:.5f}, Validation Loss: {average_valid_loss:.5f}"
-            )
+            print(f"Epoch [{epoch + 1}/{num_epochs}], Train Loss: {average_train_loss:.5f}, Validation Loss: {average_valid_loss:.5f}")
 
             # Write to TensorBoard if requested
             if use_tensorboard:
@@ -261,10 +252,7 @@ def train_regression_model_with_weight(
                 writer.add_scalar("Validation Loss", average_valid_loss, epoch)
 
             # Early Stopping
-            if (
-                early_stopping_patience is not None
-                and average_valid_loss < best_valid_loss - 1e-5
-            ):
+            if early_stopping_patience is not None and average_valid_loss < best_valid_loss - 1e-5:
                 best_valid_loss = average_valid_loss
                 patience_counter = 0
                 best_weights = copy.deepcopy(net.state_dict())  # Record the best weights
@@ -289,21 +277,23 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 
+
 # 重写上面的函数 要求针对不同样本 有权重
-def train_net_p_with_weight(cfg,net,x,y,weights,lr=0.001):
+def train_net_p_with_weight(cfg, net, x, y, weights, lr=0.001):
     # Example usage
-    x_train, x_valid, y_train, y_valid,weights_train,weights_valid = train_test_split(x, y,weights, test_size=0.2, random_state=42)
+    x_train, x_valid, y_train, y_valid, weights_train, weights_valid = train_test_split(x, y, weights, test_size=0.2, random_state=42)
 
     # Create data loaders
-    train_loader = DataLoader(TensorDataset(x_train, y_train,weights_train),
-                                batch_size=cfg.batch_size_p, shuffle=True,
-                            )
-    valid_loader = DataLoader(TensorDataset(x_valid, y_valid,weights_valid), 
-                              batch_size=cfg.batch_size_p, shuffle=False)
+    train_loader = DataLoader(
+        TensorDataset(x_train, y_train, weights_train),
+        batch_size=cfg.batch_size_p,
+        shuffle=True,
+    )
+    valid_loader = DataLoader(TensorDataset(x_valid, y_valid, weights_valid), batch_size=cfg.batch_size_p, shuffle=False)
 
     # 带权重的loss
     def weighted_mse_loss(input, target, weights):
-        out = (input - target)**2
+        out = (input - target) ** 2
         out = out * weights.expand_as(out)
         loss = out.mean()
         return loss
@@ -313,9 +303,15 @@ def train_net_p_with_weight(cfg,net,x,y,weights,lr=0.001):
     loss_fn = weighted_mse_loss
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
 
-
-    train_regression_model_with_weight(train_loader, valid_loader, net, 
-                           loss_fn, optimizer, device=cfg.device,
-                           num_epochs=cfg.num_epochs_p, use_tensorboard=False, 
-                           tensorboard_path='logs', early_stopping_patience=cfg.es_p)
-
+    train_regression_model_with_weight(
+        train_loader,
+        valid_loader,
+        net,
+        loss_fn,
+        optimizer,
+        device=cfg.device,
+        num_epochs=cfg.num_epochs_p,
+        use_tensorboard=False,
+        tensorboard_path="logs",
+        early_stopping_patience=cfg.es_p,
+    )
